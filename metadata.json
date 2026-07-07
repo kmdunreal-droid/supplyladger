@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Inventory Management System",
+  "description": "A complete inventory management system with role-based auth, local storage, and custom rate calculation methods (Kulia) for supply management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
