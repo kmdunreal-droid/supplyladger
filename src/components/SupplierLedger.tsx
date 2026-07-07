@@ -137,6 +137,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
   
   // Storage initialized in App.tsx or on first load
   const [searchQuery, setSearchQuery] = useState('');
+  const [saveStatus, setSaveStatus] = useState<string>('');
 
   const handlePrevMonth = () => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1));
   const handleNextMonth = () => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1));
@@ -200,12 +201,16 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
   const handleCreateSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim()) return;
+    setSaveStatus('Saving supplier to Supabase...');
     const newSup = await addSupplier(newUserName.trim(), newUserPassword.trim(), newSupplierCategories);
     if (newSup) {
       handleSelectSupplier(newSup.id);
       setNewUserName('');
       setNewUserPassword('');
       setNewSupplierCategories([]);
+      setSaveStatus('Supplier saved to Supabase successfully.');
+    } else {
+      setSaveStatus('Supplier save failed. Check Supabase connection.');
     }
   };
 
@@ -499,6 +504,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
 
     const totalBill = validItems.reduce((acc, i) => acc + i.total, 0);
 
+    setSaveStatus('Saving delivery to Supabase...');
     if (editingId) {
       const updatedDelivery: Delivery = {
         id: editingId,
@@ -522,6 +528,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
     }
 
     setShowDeliveryForm(false);
+    setSaveStatus('Delivery saved to Supabase successfully.');
     setDelItems([]);
     setEditingId(null);
     refreshData();
@@ -532,6 +539,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
     const parsedAmount = parseFloat(payAmount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) return alert('Enter valid amount');
 
+    setSaveStatus('Saving payment to Supabase...');
     if (editingId) {
       const updatedPayment: PurchasePayment = {
         id: editingId,
@@ -555,6 +563,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
     }
 
     setShowPaymentForm(false);
+    setSaveStatus('Payment saved to Supabase successfully.');
     setPayAmount('');
     setPayNote('');
     setEditingId(null);

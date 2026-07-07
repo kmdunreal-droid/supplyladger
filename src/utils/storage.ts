@@ -6,6 +6,7 @@ const CURRENT_SUPPLIER_KEY = 'chicken_current_supplier_id';
 const CATEGORIES_KEY = 'chicken_supplier_categories_v2';
 const FORMULAS_KEY = 'chicken_rate_formulas';
 const SYSTEM_USERS_KEY = 'chicken_system_users';
+const SUPABASE_IDENTITY_KEY = 'chicken_supabase_identity';
 
 const getSupabaseSession = async () => {
   if (!supabase) return null;
@@ -17,16 +18,39 @@ const getSupabaseSession = async () => {
   return session;
 };
 
+const getSupabaseIdentity = async (): Promise<{ uid: string; email: string } | null> => {
+  if (!supabase) return null;
+
+  const session = await getSupabaseSession();
+  const authenticatedUser = session?.user;
+  if (authenticatedUser?.id) {
+    return {
+      uid: authenticatedUser.id,
+      email: authenticatedUser.email || 'user@local.app'
+    };
+  }
+
+  let identity = localStorage.getItem(SUPABASE_IDENTITY_KEY);
+  if (!identity) {
+    identity = `guest-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+    localStorage.setItem(SUPABASE_IDENTITY_KEY, identity);
+  }
+
+  return {
+    uid: identity,
+    email: `${identity}@local.app`
+  };
+};
+
 const ensureDatabaseUserId = async (): Promise<number | null> => {
   if (!supabase) return null;
-  const session = await getSupabaseSession();
-  const uid = session?.user?.id;
-  if (!uid) return null;
+  const identity = await getSupabaseIdentity();
+  if (!identity) return null;
 
   const { data: existingUser, error: lookupError } = await supabase
     .from('users')
     .select('id')
-    .eq('uid', uid)
+    .eq('uid', identity.uid)
     .maybeSingle();
 
   if (lookupError) {
@@ -40,7 +64,7 @@ const ensureDatabaseUserId = async (): Promise<number | null> => {
 
   const { data: insertedUser, error: insertError } = await supabase
     .from('users')
-    .insert({ uid, email: session.user?.email || '' })
+    .insert({ uid: identity.uid, email: identity.email })
     .select('id')
     .single();
 
@@ -87,8 +111,12 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
     }
 
     const result: Supplier[] = (data || []).map(mapSupplierRow);
-    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(result));
-    return result;
+    if (result.length > 0) {
+      localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(result));
+      return result;
+    }
+    // Cloud empty, fall back to local data
+    return getSuppliersSync();
   } catch (error) {
     console.error('Error fetching suppliers:', error);
     return getSuppliersSync();
@@ -292,8 +320,12 @@ export const syncTransactionsWithCloud = async (supplierId: string | null = getC
     }
 
     const result: Transaction[] = (transactionsData || []).map((t: any) => mapTransactionRow(t, itemsData));
-    localStorage.setItem(`chicken_txs_${supplierId}`, JSON.stringify(result));
-    return result;
+    if (result.length > 0) {
+      localStorage.setItem(`chicken_txs_${supplierId}`, JSON.stringify(result));
+      return result;
+    }
+    // Cloud empty, keep local data
+    return getTransactions(supplierId);
   } catch (error) {
     console.error('Error syncing transactions from cloud:', error);
     return getTransactions(supplierId);

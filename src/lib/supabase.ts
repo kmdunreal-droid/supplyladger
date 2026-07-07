@@ -50,3 +50,13 @@ const isValidUrl = (url: string) => {
 export const supabase = (supabaseUrl && isValidUrl(supabaseUrl) && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
+
+export const supabaseConfig = {
+  url: supabaseUrl,
+  anonKey: supabaseAnonKey,
+  initialized: Boolean(supabase),
+};
+
+if (typeof window !== 'undefined') {
+  (window as Window & { __SUPABASE_DEBUG__?: typeof supabaseConfig }).__SUPABASE_DEBUG__ = supabaseConfig;
+}
