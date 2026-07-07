@@ -131,7 +131,10 @@ export const saveSuppliers = async (suppliers: Supplier[]) => {
   if (!userId) return;
 
   try {
-    const rows = suppliers.map(s => ({
+    const seen = new Set<string>();
+    const unique = suppliers.filter(s => { const dup = seen.has(s.id); seen.add(s.id); return !dup; });
+
+    const rows = unique.map(s => ({
       external_id: s.id,
       user_id: userId,
       name: s.name,
@@ -139,12 +142,14 @@ export const saveSuppliers = async (suppliers: Supplier[]) => {
       categories: s.categories
     }));
 
-    const { error } = await supabase
-      .from('suppliers')
-      .upsert(rows, { onConflict: 'external_id' });
+    if (rows.length > 0) {
+      const { error } = await supabase
+        .from('suppliers')
+        .upsert(rows, { onConflict: 'external_id' });
 
-    if (error) {
-      console.error('Error saving suppliers to Supabase:', error);
+      if (error) {
+        console.error('Error saving suppliers to Supabase:', error);
+      }
     }
   } catch (error) {
     console.error('Error saving suppliers:', error);
@@ -535,7 +540,11 @@ export const saveFormulas = async (formulas: Formula[]) => {
   if (!userId) return;
 
   try {
-    const rows = formulas.map(f => ({
+    // Deduplicate by id to prevent PostgreSQL upsert conflict
+    const seen = new Set<string>();
+    const unique = formulas.filter(f => { const dup = seen.has(f.id); seen.add(f.id); return !dup; });
+
+    const rows = unique.map(f => ({
       external_id: f.id,
       user_id: userId,
       name: f.name,
@@ -544,12 +553,14 @@ export const saveFormulas = async (formulas: Formula[]) => {
       variables: f.variables
     }));
 
-    const { error } = await supabase
-      .from('formulas')
-      .upsert(rows, { onConflict: 'external_id' });
+    if (rows.length > 0) {
+      const { error } = await supabase
+        .from('formulas')
+        .upsert(rows, { onConflict: 'external_id' });
 
-    if (error) {
-      console.error('Error saving formulas to Supabase:', error);
+      if (error) {
+        console.error('Error saving formulas to Supabase:', error);
+      }
     }
   } catch (error) {
     console.error('Error saving formulas:', error);
@@ -640,46 +651,17 @@ export const initializeStorage = async () => {
     saveCategories(['Chicken', 'Feed']);
   }
 
-  // Add default formulas if none exist
+  // Add default formulas if none exist (batch create to avoid duplicate IDs)
   const formulas = getFormulas();
   if (formulas.length === 0) {
-    addFormula({
-      name: 'Standard Rate',
-      category: 'Chicken',
-      expression: 'sp + v1',
-      variables: [
-        { name: 'sp', label: 'Base Rate' },
-        { name: 'v1', label: 'Market Extra' }
-      ]
-    });
-    addFormula({
-      name: 'Broiler Commission',
-      category: 'Chicken',
-      expression: 'sp - v1',
-      variables: [
-        { name: 'sp', label: 'Market Rate' },
-        { name: 'v1', label: 'Commission' }
-      ]
-    });
-    addFormula({
-      name: 'Multi-Variable Rate',
-      category: 'Chicken',
-      expression: 'sp + (v1 * v2)',
-      variables: [
-        { name: 'sp', label: 'Base' },
-        { name: 'v1', label: 'Factor A' },
-        { name: 'v2', label: 'Factor B' }
-      ]
-    });
-    addFormula({
-      name: 'Feed Total',
-      category: 'Feed',
-      expression: 'v1 * v2',
-      variables: [
-        { name: 'v1', label: 'Bags' },
-        { name: 'v2', label: 'Rate per Bag' }
-      ]
-    });
+    const defaults: Omit<Formula, 'id'>[] = [
+      { name: 'Standard Rate', category: 'Chicken', expression: 'sp + v1', variables: [{ name: 'sp', label: 'Base Rate' }, { name: 'v1', label: 'Market Extra' }] },
+      { name: 'Broiler Commission', category: 'Chicken', expression: 'sp - v1', variables: [{ name: 'sp', label: 'Market Rate' }, { name: 'v1', label: 'Commission' }] },
+      { name: 'Multi-Variable Rate', category: 'Chicken', expression: 'sp + (v1 * v2)', variables: [{ name: 'sp', label: 'Base' }, { name: 'v1', label: 'Factor A' }, { name: 'v2', label: 'Factor B' }] },
+      { name: 'Feed Total', category: 'Feed', expression: 'v1 * v2', variables: [{ name: 'v1', label: 'Bags' }, { name: 'v2', label: 'Rate per Bag' }] },
+    ];
+    const newFormulas: Formula[] = defaults.map((f, i) => ({ ...f, id: `formula-${Date.now()}-${i}` }));
+    saveFormulas(newFormulas);
   }
 
   // Add default system users if none exist
