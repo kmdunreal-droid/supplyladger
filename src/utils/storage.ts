@@ -169,8 +169,11 @@ export const addSupplier = async (name: string, password?: string, categories?: 
 
   const session = await getSupabaseSession();
   if (!session?.user) {
-    console.error('User not authenticated');
-    return null;
+    // Not authenticated with Supabase — save locally only
+    const suppliers = getSuppliersSync();
+    suppliers.push(newSupplierData);
+    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
+    return newSupplierData;
   }
 
   await saveSuppliers([newSupplierData]);
