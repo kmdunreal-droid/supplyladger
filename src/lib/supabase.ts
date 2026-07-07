@@ -1,8 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) 
-  ? process.env.VITE_SUPABASE_URL 
-  : (import.meta.env?.VITE_SUPABASE_URL || '');
+const getEnvValue = (...keys: string[]) => {
+  const sources = [
+    typeof process !== 'undefined' ? process.env : undefined,
+    typeof import.meta !== 'undefined' ? import.meta.env : undefined,
+  ];
+
+  for (const source of sources) {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+  }
+
+  return '';
+};
+
+const rawUrl = getEnvValue('VITE_SUPABASE_URL', 'SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL');
 
 // Sanitize URL by removing `/rest/v1/` or `/rest/v1` if present
 const sanitizeUrl = (url: string) => {
@@ -20,9 +36,7 @@ const sanitizeUrl = (url: string) => {
 
 const supabaseUrl = sanitizeUrl(rawUrl);
 
-const supabaseAnonKey = (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) 
-  ? process.env.VITE_SUPABASE_ANON_KEY 
-  : (import.meta.env?.VITE_SUPABASE_ANON_KEY || '').trim();
+const supabaseAnonKey = getEnvValue('VITE_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
 const isValidUrl = (url: string) => {
   try {

@@ -17,6 +17,7 @@ export default function App() {
   const [supabaseAuthMode, setSupabaseAuthMode] = useState<'login' | 'signup'>('login');
   const [error, setError] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const isSupabaseConfigured = Boolean(supabase);
 
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
@@ -113,8 +114,8 @@ export default function App() {
 
   const handleGoogleLogin = async () => {
     try {
-      if (!supabase) {
-        setError('Google Sign-In is not configured (missing Supabase credentials)');
+      if (!isSupabaseConfigured) {
+        setError('Google Sign-In is unavailable because Supabase is not configured for this deployment.');
         return;
       }
       await supabase.auth.signInWithOAuth({
@@ -130,8 +131,8 @@ export default function App() {
     const uname = username.trim();
     
     if (useSupabaseLogin) {
-      if (!supabase) {
-        setError('Supabase credentials are not configured');
+      if (!isSupabaseConfigured) {
+        setError('Supabase is not configured for this deployment. Please use local login instead.');
         return;
       }
 
@@ -322,11 +323,22 @@ export default function App() {
           <div className="mt-4 text-center space-y-2">
             <button
               type="button"
-              onClick={() => setUseSupabaseLogin(prev => !prev)}
+              onClick={() => {
+                if (!isSupabaseConfigured) {
+                  setError('Supabase is not configured for this deployment. Please use local login instead.');
+                  return;
+                }
+                setUseSupabaseLogin(prev => !prev);
+              }}
               className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold transition-colors"
             >
-              {useSupabaseLogin ? 'Use local login instead' : 'Use Supabase email login'}
+              {useSupabaseLogin ? 'Use local login instead' : isSupabaseConfigured ? 'Use Supabase email login' : 'Supabase login unavailable'}
             </button>
+            {!isSupabaseConfigured && (
+              <p className="text-[10px] text-amber-600 font-medium">
+                Supabase is not configured on this deployment. Local login will still work.
+              </p>
+            )}
             {useSupabaseLogin && (
               <button
                 type="button"
