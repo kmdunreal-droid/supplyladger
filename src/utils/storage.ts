@@ -130,29 +130,25 @@ export const saveSuppliers = async (suppliers: Supplier[]) => {
   const userId = await ensureDatabaseUserId();
   if (!userId) return;
 
-  try {
-    const seen = new Set<string>();
-    const unique = suppliers.filter(s => { const dup = seen.has(s.id); seen.add(s.id); return !dup; });
-
-    const rows = unique.map(s => ({
-      external_id: s.id,
-      user_id: userId,
-      name: s.name,
-      password: s.password,
-      categories: s.categories
-    }));
-
-    if (rows.length > 0) {
+  // Upsert one by one to avoid PostgreSQL "cannot affect row a second time"
+  for (const s of suppliers) {
+    try {
       const { error } = await supabase
         .from('suppliers')
-        .upsert(rows, { onConflict: 'external_id' });
+        .upsert({
+          external_id: s.id,
+          user_id: userId,
+          name: s.name,
+          password: s.password,
+          categories: s.categories
+        }, { onConflict: 'external_id' });
 
       if (error) {
-        console.error('Error saving suppliers to Supabase:', error);
+        console.error('Error saving supplier to Supabase:', error);
       }
+    } catch (error) {
+      console.error('Error saving supplier:', error);
     }
-  } catch (error) {
-    console.error('Error saving suppliers:', error);
   }
 };
 
@@ -539,31 +535,26 @@ export const saveFormulas = async (formulas: Formula[]) => {
   const userId = await ensureDatabaseUserId();
   if (!userId) return;
 
-  try {
-    // Deduplicate by id to prevent PostgreSQL upsert conflict
-    const seen = new Set<string>();
-    const unique = formulas.filter(f => { const dup = seen.has(f.id); seen.add(f.id); return !dup; });
-
-    const rows = unique.map(f => ({
-      external_id: f.id,
-      user_id: userId,
-      name: f.name,
-      category: f.category,
-      expression: f.expression,
-      variables: f.variables
-    }));
-
-    if (rows.length > 0) {
+  // Upsert one by one to avoid PostgreSQL "cannot affect row a second time"
+  for (const f of formulas) {
+    try {
       const { error } = await supabase
         .from('formulas')
-        .upsert(rows, { onConflict: 'external_id' });
+        .upsert({
+          external_id: f.id,
+          user_id: userId,
+          name: f.name,
+          category: f.category,
+          expression: f.expression,
+          variables: f.variables
+        }, { onConflict: 'external_id' });
 
       if (error) {
-        console.error('Error saving formulas to Supabase:', error);
+        console.error('Error saving formula to Supabase:', error);
       }
+    } catch (error) {
+      console.error('Error saving formula:', error);
     }
-  } catch (error) {
-    console.error('Error saving formulas:', error);
   }
 };
 
