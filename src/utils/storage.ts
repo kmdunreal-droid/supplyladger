@@ -371,7 +371,18 @@ export const saveTransactions = async (txs: Transaction[], supplierId: string | 
   localStorage.setItem(`chicken_txs_${supplierId}`, JSON.stringify(txs));
 
   if (!supabase) return;
-  const supplierRecord = await getSupplierDatabaseRecord(supplierId);
+  let supplierRecord = await getSupplierDatabaseRecord(supplierId);
+  
+  // If supplier not in cloud, upsert it first so transactions can reference it
+  if (!supplierRecord) {
+    const localSuppliers = getSuppliersSync();
+    const localSupplier = localSuppliers.find(s => s.id === supplierId);
+    if (localSupplier) {
+      await saveSuppliers([localSupplier]);
+      supplierRecord = await getSupplierDatabaseRecord(supplierId);
+    }
+  }
+  
   if (!supplierRecord) return;
 
   try {
