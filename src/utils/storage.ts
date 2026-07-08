@@ -362,8 +362,7 @@ export const saveTransactions = async (txs: Transaction[], supplierId: string | 
 
   if (!supabase) return;
   let supplierRecord = await getSupplierDatabaseRecord(supplierId);
-  
-  // If supplier not in cloud, upsert all local suppliers first so transactions can reference it
+
   if (!supplierRecord) {
     const localSuppliers = getSuppliersSync();
     if (localSuppliers.length > 0) {
@@ -371,57 +370,47 @@ export const saveTransactions = async (txs: Transaction[], supplierId: string | 
       supplierRecord = await getSupplierDatabaseRecord(supplierId);
     }
   }
-  
-  if (!supplierRecord) return;
 
-  try {
-    const { data: existing, error: existingError } = await supabase
-      .from('transactions')
-      .select('id, external_id')
-      .eq('supplier_id', supplierRecord.id);
+  if (supplierRecord) {
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('transactions')
+        .select('id, external_id')
+        .eq('supplier_id', supplierRecord.id);
 
-    if (existingError) {
-      console.error('Error reading existing transactions from Supabase:', existingError);
-    } else {
-      const deletedIds = (existing || [])
-        .filter((row: any) => !txs.some(tx => tx.id === row.external_id))
-        .map((row: any) => row.id);
+      if (!existingError && existing) {
+        const deletedIds = existing
+          .filter((row: any) => !txs.some(tx => tx.id === row.external_id))
+          .map((row: any) => row.id);
 
-      if (deletedIds.length) {
-        await supabase.from('delivery_items').delete().in('transaction_id', deletedIds);
-        const { error: deleteTxError } = await supabase.from('transactions').delete().in('id', deletedIds);
-        if (deleteTxError) {
-          console.error('Error deleting stale transactions from Supabase:', deleteTxError);
+        if (deletedIds.length) {
+          await supabase.from('delivery_items').delete().in('transaction_id', deletedIds);
+          await supabase.from('transactions').delete().in('id', deletedIds);
         }
       }
-    }
 
-    for (const tx of txs) {
-      const { data: insertedTx, error: txError } = await supabase
-        .from('transactions')
-        .upsert({
-          external_id: tx.id,
-          supplier_id: supplierRecord.id,
-          type: tx.type,
-          date: tx.date,
-          amount: tx.type === 'payment' ? tx.amount : null,
-          total_bill: tx.type === 'delivery' ? tx.totalBill : null,
-          note: tx.type === 'payment' ? tx.note : null
-        }, { onConflict: 'external_id' })
-        .select('id')
-        .single();
+      for (const tx of txs) {
+        const { data: insertedTx, error: txError } = await supabase
+          .from('transactions')
+          .upsert({
+            external_id: tx.id,
+            supplier_id: supplierRecord.id,
+            type: tx.type,
+            date: tx.date,
+            amount: tx.type === 'payment' ? tx.amount : null,
+            total_bill: tx.type === 'delivery' ? tx.totalBill : null,
+            note: tx.type === 'payment' ? tx.note : null
+          }, { onConflict: 'external_id' })
+          .select('id')
+          .single();
 
-      if (txError) {
-        console.error('Error saving transaction to Supabase:', txError);
-        continue;
+        if (!txError && tx.type === 'delivery' && tx.items?.length && insertedTx?.id) {
+          await saveTransactionItems(insertedTx.id, tx.items);
+        }
       }
-
-      if (tx.type === 'delivery' && tx.items?.length && insertedTx?.id) {
-        await saveTransactionItems(insertedTx.id, tx.items);
-      }
+    } catch (error) {
+      console.error('Error saving transactions to Supabase:', error);
     }
-  } catch (error) {
-    console.error('Error saving transactions to Supabase:', error);
   }
 };
 

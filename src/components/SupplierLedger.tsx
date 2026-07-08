@@ -186,7 +186,15 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
   };
 
   useEffect(() => {
-    const sid = getCurrentSupplierId();
+    let sid = getCurrentSupplierId();
+    // Auto-select first supplier if none selected
+    if (!sid) {
+      const allSuppliers = getSuppliersSync();
+      if (allSuppliers.length > 0) {
+        sid = allSuppliers[0].id;
+        setCurrentSupplierId(sid);
+      }
+    }
     setCurSupplierId(sid);
     refreshData(sid);
   }, []);
