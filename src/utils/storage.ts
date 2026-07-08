@@ -477,6 +477,8 @@ export const getLedgerBalance = (supplierId: string | null = getCurrentSupplierI
 };
 
 // Category Management (Shared across suppliers for convenience)
+const CATEGORIES_CLOUD_TABLE = 'app_settings';
+
 export const getCategories = (): string[] => {
   const defaults = ['Chicken', 'Wings', 'Leg piece', 'Boneless', 'Thigh', 'Chicken tikka', 'New category', 'Whole'];
   try {
@@ -494,24 +496,46 @@ export const getCategories = (): string[] => {
   }
 };
 
-export const saveCategories = (cats: string[]) => {
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cats));
+const syncCategoriesFromCloud = async () => {
+  if (!supabase) return;
+  const userId = await ensureDatabaseUserId();
+  if (!userId) return;
+  const { data, error } = await supabase
+    .from(CATEGORIES_CLOUD_TABLE)
+    .select('value')
+    .eq('key', 'categories')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!error && data?.value && Array.isArray(data.value)) {
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(data.value));
+  }
 };
 
-export const addCategory = (cat: string) => {
+export const saveCategories = async (cats: string[]) => {
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cats));
+  if (!supabase) return;
+  const userId = await ensureDatabaseUserId();
+  if (!userId) return;
+  await supabase.from(CATEGORIES_CLOUD_TABLE).upsert(
+    { user_id: userId, key: 'categories', value: cats },
+    { onConflict: 'user_id, key' }
+  );
+};
+
+export const addCategory = async (cat: string) => {
   const c = cat.trim();
   if (!c) return;
   const cats = getCategories();
   if (!cats.includes(c)) {
     cats.push(c);
-    saveCategories(cats);
+    await saveCategories(cats);
   }
 };
 
-export const deleteCategory = (cat: string) => {
+export const deleteCategory = async (cat: string) => {
   const cats = getCategories();
   const filtered = cats.filter(c => c !== cat);
-  saveCategories(filtered);
+  await saveCategories(filtered);
 };
 
 // Formula Management
@@ -632,6 +656,9 @@ export const initializeStorage = async () => {
       localStorage.removeItem(oldKey);
     }
   }
+
+  // Try to sync categories from cloud first
+  await syncCategoriesFromCloud();
 
   // Add default category if none exists
   const categories = getCategories();
