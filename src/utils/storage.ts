@@ -161,23 +161,13 @@ export const addSupplier = async (name: string, password?: string, categories?: 
     createdAt: Date.now()
   };
 
-  if (!supabase) {
-    const suppliers = getSuppliersSync();
-    suppliers.push(newSupplierData);
-    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
-    return newSupplierData;
-  }
+  const suppliers = getSuppliersSync();
+  suppliers.push(newSupplierData);
+  localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
 
-  const session = await getSupabaseSession();
-  if (!session?.user) {
-    // Not authenticated with Supabase — save locally only
-    const suppliers = getSuppliersSync();
-    suppliers.push(newSupplierData);
-    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
-    return newSupplierData;
+  if (supabase) {
+    await saveSuppliers([newSupplierData]);
   }
-
-  await saveSuppliers([newSupplierData]);
   return newSupplierData;
 };
 
