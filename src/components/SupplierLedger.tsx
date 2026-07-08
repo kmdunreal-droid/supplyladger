@@ -138,6 +138,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
   // Storage initialized in App.tsx or on first load
   const [searchQuery, setSearchQuery] = useState('');
   const [saveStatus, setSaveStatus] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handlePrevMonth = () => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1));
   const handleNextMonth = () => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1));
@@ -495,6 +496,9 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
 
   const handleSubmitDelivery = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+
     const validItems = delItems.filter(i => Number(i.weight) > 0 && Number(i.rate) > 0).map((i, idx) => {
       if (typeof i.category === 'string' && i.category.trim()) {
         addCategory(i.category.trim());
@@ -508,7 +512,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
       };
     });
 
-    if (validItems.length === 0) return alert('Please enter at least one valid item with a weight and rate.');
+    if (validItems.length === 0) { setSubmitting(false); return alert('Please enter at least one valid item with a weight and rate.'); }
 
     const totalBill = validItems.reduce((acc, i) => acc + i.total, 0);
 
@@ -539,13 +543,16 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
     setSaveStatus('Delivery saved to Supabase successfully.');
     setDelItems([]);
     setEditingId(null);
+    setSubmitting(false);
     refreshData();
   };
 
   const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     const parsedAmount = parseFloat(payAmount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return alert('Enter valid amount');
+    if (isNaN(parsedAmount) || parsedAmount <= 0) { setSubmitting(false); return alert('Enter valid amount'); }
 
     setSaveStatus('Saving payment to Supabase...');
     if (editingId) {
@@ -575,6 +582,7 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
     setPayAmount('');
     setPayNote('');
     setEditingId(null);
+    setSubmitting(false);
     refreshData();
   };
 
@@ -804,9 +812,10 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
                 <div className="flex gap-3 pt-4">
                   <button 
                     type="submit" 
-                    className={`flex-1 py-4 rounded-xl font-black shadow-lg hover:shadow-xl transition-all text-white uppercase tracking-wider ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                    disabled={submitting}
+                    className={`flex-1 py-4 rounded-xl font-black shadow-lg hover:shadow-xl transition-all text-white uppercase tracking-wider ${submitting ? 'opacity-50 cursor-not-allowed' : ''} ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   >
-                    {editingId ? 'Update Payment' : 'Record Final Payment'}
+                    {submitting ? 'Saving...' : editingId ? 'Update Payment' : 'Record Final Payment'}
                   </button>
                 </div>
               </form>
@@ -1408,12 +1417,13 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowDeliveryForm(false)} className="px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-slate-600 transition-all">Cancel</button>
-                <button 
-                  type="submit" 
-                  className={`flex-1 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-all text-white ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-                >
-                  {editingId ? 'Update Stock Arrival' : 'Save Stock Arrival'}
-                </button>
+                  <button 
+                    type="submit" 
+                    disabled={submitting}
+                    className={`flex-1 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-all text-white ${submitting ? 'opacity-50 cursor-not-allowed' : ''} ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                  >
+                    {submitting ? 'Saving...' : editingId ? 'Update Stock Arrival' : 'Save Stock Arrival'}
+                  </button>
               </div>
             </form>
           </div>
@@ -1453,9 +1463,10 @@ export default function SupplierLedger({ viewMode = 'admin', onLogout }: { viewM
                 <button type="button" onClick={() => setShowPaymentForm(false)} className="px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-slate-600 transition-all">Cancel</button>
                 <button 
                   type="submit" 
-                  className={`flex-1 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-all text-white ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                  disabled={submitting}
+                  className={`flex-1 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-all text-white ${submitting ? 'opacity-50 cursor-not-allowed' : ''} ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 >
-                  {editingId ? 'Update Payment' : 'Record Payment'}
+                  {submitting ? 'Saving...' : editingId ? 'Update Payment' : 'Record Payment'}
                 </button>
               </div>
             </form>
