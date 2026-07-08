@@ -663,20 +663,7 @@ export const initializeStorage = async () => {
   // Add default category if none exists
   const categories = getCategories();
   if (categories.length === 0) {
-    saveCategories(['Chicken', 'Feed']);
-  }
-
-  // Add default formulas if none exist (batch create to avoid duplicate IDs)
-  const formulas = getFormulas();
-  if (formulas.length === 0) {
-    const defaults: Omit<Formula, 'id'>[] = [
-      { name: 'Standard Rate', category: 'Chicken', expression: 'sp + v1', variables: [{ name: 'sp', label: 'Base Rate' }, { name: 'v1', label: 'Market Extra' }] },
-      { name: 'Broiler Commission', category: 'Chicken', expression: 'sp - v1', variables: [{ name: 'sp', label: 'Market Rate' }, { name: 'v1', label: 'Commission' }] },
-      { name: 'Multi-Variable Rate', category: 'Chicken', expression: 'sp + (v1 * v2)', variables: [{ name: 'sp', label: 'Base' }, { name: 'v1', label: 'Factor A' }, { name: 'v2', label: 'Factor B' }] },
-      { name: 'Feed Total', category: 'Feed', expression: 'v1 * v2', variables: [{ name: 'v1', label: 'Bags' }, { name: 'v2', label: 'Rate per Bag' }] },
-    ];
-    const newFormulas: Formula[] = defaults.map((f, i) => ({ ...f, id: `formula-${Date.now()}-${i}` }));
-    saveFormulas(newFormulas);
+    await saveCategories(['Chicken', 'Feed']);
   }
 
   // Add default system users if none exist
