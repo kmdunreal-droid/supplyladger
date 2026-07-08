@@ -373,12 +373,11 @@ export const saveTransactions = async (txs: Transaction[], supplierId: string | 
   if (!supabase) return;
   let supplierRecord = await getSupplierDatabaseRecord(supplierId);
   
-  // If supplier not in cloud, upsert it first so transactions can reference it
+  // If supplier not in cloud, upsert all local suppliers first so transactions can reference it
   if (!supplierRecord) {
     const localSuppliers = getSuppliersSync();
-    const localSupplier = localSuppliers.find(s => s.id === supplierId);
-    if (localSupplier) {
-      await saveSuppliers([localSupplier]);
+    if (localSuppliers.length > 0) {
+      await saveSuppliers(localSuppliers);
       supplierRecord = await getSupplierDatabaseRecord(supplierId);
     }
   }
