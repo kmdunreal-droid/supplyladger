@@ -213,7 +213,8 @@ export default function App() {
       
       localStorage.setItem('chicken_session', JSON.stringify({ 
         role: matchedSystemUser.role,
-        supplierId: supId
+        supplierId: supId,
+        username: matchedSystemUser.username
       }));
 
       setError('');
@@ -234,7 +235,8 @@ export default function App() {
       
       localStorage.setItem('chicken_session', JSON.stringify({ 
         role: 'supplier',
-        supplierId: matchedSupplier.id
+        supplierId: matchedSupplier.id,
+        username: matchedSupplier.name
       }));
 
       setError('');

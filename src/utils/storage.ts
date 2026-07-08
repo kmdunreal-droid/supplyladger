@@ -30,15 +30,22 @@ const getSupabaseIdentity = async (): Promise<{ uid: string; email: string } | n
     };
   }
 
-  let identity = localStorage.getItem(SUPABASE_IDENTITY_KEY);
-  if (!identity) {
-    identity = `guest-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
-    localStorage.setItem(SUPABASE_IDENTITY_KEY, identity);
+  // Use local username as identity so same login = same Supabase user & data across devices
+  let username = '';
+  try {
+    const sessionData = localStorage.getItem('chicken_session');
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      username = parsed.username || parsed.role || '';
+    }
+  } catch {}
+  if (!username) {
+    username = 'km';
   }
 
   return {
-    uid: identity,
-    email: `${identity}@local.app`
+    uid: `local-${username}`,
+    email: `${username}@local.app`
   };
 };
 
