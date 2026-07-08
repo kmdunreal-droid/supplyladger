@@ -626,6 +626,7 @@ export const initializeStorage = async () => {
     };
     localStorage.setItem(SUPPLIERS_KEY, JSON.stringify([firstSupplier]));
     setCurrentSupplierId(firstSupplier.id);
+    await saveSuppliers([firstSupplier]);
     
     // Move existing standalone transactions if they exist (Migration)
     const oldKey = 'chicken_supplier_ledger';
